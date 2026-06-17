@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Питание волонтёров · IFD’26</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: #f4f7fc;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      padding: 20px;
+      color: #1e2b3c;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 28px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.06);
+      padding: 24px 28px 32px;
+    }
+    h1 {
+      font-size: 1.9rem;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .badge {
+      background: #0b2b4a;
+      color: white;
+      font-size: 0.9rem;
+      font-weight: 500;
+      padding: 4px 14px;
+      border-radius: 40px;
+      margin-left: 8px;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px 20px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      background: #f0f4fa;
+      padding: 12px 18px;
+      border-radius: 40px;
+    }
+    .filter-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 16px;
+    }
+    .filter-group label {
+      font-weight: 500;
+      font-size: 0.9rem;
+      color: #1f3a57;
+    }
+    .filter-group select {
+      background: white;
+      border: 1px solid #d0ddee;
+      border-radius: 40px;
+      padding: 8px 18px 8px 16px;
+      font-size: 0.9rem;
+      font-weight: 450;
+      color: #1e2b3c;
+      cursor: pointer;
+      outline: none;
+      transition: 0.15s;
+    }
+    .filter-group select:focus {
+      border-color: #2b6c9e;
+      box-shadow: 0 0 0 3px rgba(43,108,158,0.15);
+    }
+    .stats {
+      font-size: 0.95rem;
+      background: #dce6f2;
+      padding: 6px 18px;
+      border-radius: 40px;
+      white-space: nowrap;
+    }
+    .stats span {
+      font-weight: 700;
+      color: #00337a;
+    }
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 18px;
+      border: 1px solid #e2ebf6;
+      background: white;
+      margin-top: 6px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      min-width: 820px;
+    }
+    th {
+      background: #e8eff8;
+      font-weight: 600;
+      padding: 14px 10px;
+      text-align: left;
+      border-bottom: 2px solid #cad8ea;
+      white-space: nowrap;
+    }
+    td {
+      padding: 10px 10px;
+      border-bottom: 1px solid #eaf0f7;
+      vertical-align: middle;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    .zone-badge {
+      background: #e2ebf6;
+      padding: 2px 12px;
+      border-radius: 30px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #00337a;
+      display: inline-block;
+      white-space: nowrap;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .vol-name {
+      font-weight: 500;
+      color: #142b44;
+    }
+    .vol-name.empty {
+      color: #8a9db0;
+      font-style: italic;
+    }
+    .checkbox-cell {
+      text-align: center;
+      width: 70px;
+    }
+    .checkbox-cell input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      accent-color: #1a6fb0;
+      cursor: pointer;
+      transform: scale(1.05);
+    }
+    .comment-field {
+      background: transparent;
+      border: 1px solid #d9e2ef;
+      border-radius: 30px;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      width: 100%;
+      min-width: 80px;
+      max-width: 140px;
+      transition: 0.1s;
+    }
+    .comment-field:focus {
+      border-color: #2b6c9e;
+      background: white;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(43,108,158,0.08);
+    }
+    .status-badge {
+      display: inline-block;
+      background: #d0ddee;
+      padding: 2px 12px;
+      border-radius: 30px;
+      font-size: 0.7rem;
+      font-weight: 500;
+      text-transform: lowercase;
+    }
+    .status-badge.volunteer {
+      background: #cfe2ff;
+      color: #004080;
+    }
+    .status-badge.coordinator {
+      background: #d4e2d4;
+      color: #1f5a1f;
+    }
+    .footer-actions {
+      margin-top: 24px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .btn {
+      background: white;
+      border: 1px solid #c4d5ea;
+      padding: 8px 22px;
+      border-radius: 60px;
+      font-weight: 500;
+      font-size: 0.9rem;
+      color: #1f3a57;
+      cursor: pointer;
+      transition: 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-primary {
+      background: #0b2b4a;
+      border: 1px solid #0b2b4a;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #1a3f62;
+    }
+    .btn-outline {
+      background: transparent;
+    }
+    .btn-outline:hover {
+      background: #eaf0f8;
+    }
+    .btn-success {
+      background: #1e7b4a;
+      border-color: #1e7b4a;
+      color: white;
+    }
+    .btn-success:hover {
+      background: #14633b;
+    }
+    .toast {
+      background: #1e2b3c;
+      color: white;
+      padding: 10px 24px;
+      border-radius: 60px;
+      font-size: 0.9rem;
+      opacity: 0;
+      transition: 0.2s;
+      pointer-events: none;
+    }
+    .toast.show {
+      opacity: 1;
+    }
+    .meta-note {
+      font-size: 0.8rem;
+      color: #4b6c8a;
+      background: #eef4fc;
+      padding: 6px 18px;
+      border-radius: 30px;
+      display: inline-block;
+    }
+    @media (max-width: 700px) {
+      .container { padding: 16px; }
+      .toolbar { flex-direction: column; align-items: stretch; }
+      .stats { white-space: normal; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+<div class="container" id="app">
+  <div style="display: flex; justify-content: space-between; flex-wrap: wrap; align-items: baseline;">
+    <h1>
+      🍽️ Обеды волонтёров
+      <span class="badge">IFD’26</span>
+    </h1>
+    <div class="meta-note">✓ отмечайте выдачу · данные сохраняются в браузере</div>
+  </div>
+
+  <div class="toolbar">
+    <div class="filter-group">
+      <label for="timeFilter">⏱ Время</label>
+      <select id="timeFilter"><option value="all">Все слоты</option></select>
+      <label for="zoneFilter">📍 Зона</label>
+      <select id="zoneFilter"><option value="all">Все зоны</option></select>
+    </div>
+    <div class="stats">
+      👥 <span id="totalCount">0</span> волонтёров · 
+      ✅ <span id="servedCount">0</span> получили обед
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:110px;">Время</th>
+          <th style="min-width:130px;">Зона</th>
+          <th style="min-width:160px;">ФИО</th>
+          <th style="width:60px;">Статус</th>
+          <th style="width:70px;">✅ Обед</th>
+          <th style="min-width:100px;">Комментарий</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <!-- динамически -->
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer-actions">
+    <button class="btn btn-outline" id="resetAllBtn">↺ Сбросить отметки</button>
+    <button class="btn btn-success" id="exportCSVBtn">⬇ Скачать CSV</button>
+    <span id="saveToast" class="toast">✅ Данные сохранены</span>
+  </div>
+</div>
+
+<script>
+  (function(){
+    // ----- данные (встроенный CSV) -----
+    const rawCSV = `ВРЕМЯ ОБЕДА,,,Зона,Статус,ФИО,Явка,Комментарий
+13:00 - 13:30,,,Сцена Ломо,волонтер,Ковальчук Марина Евгеньевна,FALSE,
+,,,Стафф сцены / Ломо,волонтер,Искандаров Тимур Азаматович,FALSE,
+,,,Стафф сцены / Кронва,волонтер,Сегень Радмила Анатольевна,FALSE,
+,,,Сцена Кронва,волонтер,Узингер Арина Николаевна ,FALSE,
+,,,Клуб выпускников,волонтер,Шобик Диана Юрьевна,FALSE,
+,,,Клуб выпускников,волонтер,Вараксина Вероника Артемовна,FALSE,
+,,,Вход VIP,волонтер,Зиновьева Елизавета Андреевна,FALSE,
+,,,Вход STAFF,волонтер,Рыбальченко Мария Владимировна,FALSE,
+,,,Вход гости,волонтер,Шулепова Виктория Дмитриевна,FALSE,
+,,,Лекторий / скейт-парк,волонтер,,FALSE,серебро
+,,,Лекторий / скейт-парк,волонтер,,FALSE,
+,,,Лекторий / здоровье,волонтер,,FALSE,
+,,,Лекторий / здоровье,волонтер,,FALSE,
+,,,Лекторий / здоровье,волонтер,,FALSE,
+,,,Дети 7+,волонтер,,FALSE,
+,,,Дети 7+,волонтер,,FALSE,
+,,,ТехноАрт,волонтер,,FALSE,
+,,,ТехноАрт,волонтер,,FALSE,
+,,,ТехноАрт,волонтер,,FALSE,
+,,,ТехноАрт,волонтер,,FALSE,
+,,,ТехноАрт,волонтер,,FALSE,
+,,,Дети 0+,волонтер,,FALSE,
+,,,Поступалити,волонтер,Смолина Анастасия Валерьевна,FALSE,
+,,,Поступалити,волонтер,Зимирева Виолетта Сергеевна,FALSE,
+,,,Спорт. Мастер-классы,волонтер,Курятова Анна Андреевна,FALSE,
+,,,Киберспорт,волонтер,Шишкина София Александровна,FALSE,
+,,,Сапы,волонтер,Искандарова Кира Руслановна,FALSE,
+,,,Сапы,волонтер,Володченкова Юлия Станиславовна,FALSE,
+,,,ИТМО Многоборье,волонтер,Лимонова Валерия Юрьевна,FALSE,
+,,,ИТМО Многоборье,волонтер,Поршина Елена Ивановна,FALSE,
+,,,ИТМО Многоборье,волонтер,Бушкова Кира Викторовна,FALSE,
+,,,ИТМО Lab,волонтер,Повзун Александр Антонович,FALSE,
+,,,ИТМО Lab,волонтер,Батурин Андрей Анатольевич,FALSE,
+,,,Резерв,волонтер,Иванов,FALSE,
+,,,Резерв,волонтер,Романова Арина Александровна,FALSE,
+,,,Резерв,волонтер,Терзинов Максим,FALSE,
+,,,Резерв,волонтер,Сатосова Софья Юрьевна,FALSE,
+,,,Резерв,волонтер,Терехова Дашенька Владимировна,FALSE,
+,,,Резерв,волонтер,Алексеев Игорь Олегович,FALSE,
+,,,Резерв,волонтер,Гринева Елизавета Романовна,FALSE,
+,,,Резерв,волонтер,Шахмаметова,FALSE,
+,,,,координатор,Леушина Полина Александровна,FALSE,
+,,,,координатор,Тимохина Анастасия Ивановна,FALSE,
+13:30 - 14:00,,,Сцена Ломо,волонтер,Умникова Ульяна Валерьевна,FALSE,
+,,,Сцена Ломо,волонтер,Крупкина Варвара Александровна,FALSE,
+,,,Сцена Кронва,волонтер,Макарова Мария Глебовна,FALSE,
+,,,Приемка и консультации,волонтер,Скрипкина Мария Владимировна,FALSE,
+,,,Приемка и консультации,волонтер,Панфилова Анна Константиновна,FALSE,
+,,,Приемка и консультации,волонтер,Подолян Александра Васильевна,FALSE,
+,,,Приемка и консультации,волонтер,Танаева Ольга Михайловна,FALSE,
+,,,Приемка и консультации,волонтер,Космовская Мария Павловна,FALSE,
+,,,Прием документов,волонтер,,FALSE,
+,,,Прием документов,волонтер,,FALSE,
+,,,Прием документов,волонтер,,FALSE,
+,,,Прием документов,волонтер,,FALSE,
+,,,Настолки и ПиД,волонтер,Карташова Варвара Вадимовна,FALSE,
+,,,Костровая,волонтер,Мицкевич Эвелина Георгиевна,FALSE,
+,,,ИТМО Многоборье,волонтер,Амахина Милана Андреевна,FALSE,
+,,,ИТМО Многоборье,волонтер,Бределев Матвей Ильич,FALSE,
+,,,ИТМО Многоборье,волонтер,Пашков Владислав Юрьевич,FALSE,
+,,,ТехноАрт,волонтер,Миронова Ульяна Ильинична,FALSE,
+,,,ТехноАрт,волонтер,Петухова Марина Игоревна,FALSE,
+,,,ТехноАрт,волонтер,Шклярская Диана Евгеньевна,FALSE,
+,,,Клацаем смысла или вайб-кодинг,волонтер,Базарова Анастасия Дмитриевна,FALSE,
+,,,ITMO STORE,волонтер,Лысаковский Александр Витальевич,FALSE,
+,,,ITMO STORE,волонтер,Аверина Олеся Павловна,FALSE,
+,,,ITMO STORE,волонтер,Митраков Иван Валентинович,FALSE,
+,,,Дети 7+,волонтер,Генне Константин Валерьевич,FALSE,
+,,,Дети 7+,волонтер,Вахрамеева Анастасия Дмитриевна,FALSE,
+,,,Дети 7+,волонтер,Фирсова Вероника Романовна,FALSE,
+,,,Лекторий + орг помощь,волонтер,Юрова Анастасия Андреевна,FALSE,
+,,,Лекторий + орг помощь,волонтер,Яковлев Дмитрий Андреевич,FALSE,
+,,,ДНК ИТМО,волонтер,Леонова Дарья Дмитриевна,FALSE,
+,,,Наука и аспиранты,волонтер,Ткаченко Анастасия Александровна,FALSE,
+,,,Дети 7+,волонтер,Воронина Евгения Алексеевна,FALSE,
+,,,Дети 7+,волонтер,Загидулина Дина Радиковна,FALSE,
+,,,Резерв,волонтер,Суворова Анна Михайловна,FALSE,
+,,,Резерв,волонтер,Фирюпкина Анна Евгеньевна,FALSE,
+,,,Резерв,волонтер,Филановская Марианна Александровна,FALSE,
+,,,Резерв,волонтер,Митрофанова Любовь,FALSE,
+,,,Резерв,волонтер,Скороходова Алёна Романовна,FALSE,
+,,,Резерв,волонтер,Егорова Елизавета Сергеевна,FALSE,
+,,,Резерв,волонтер,Кузьменкина Анастасия Вадимовна,FALSE,
+,,,Резерв,волонтер,Утешова Адель Станиславовна,FALSE,
+,,,,координатор,Сергеева Елена (серебро),FALSE,
+,,,,координатор,Левченкова Наталья,FALSE,
+14:00 - 14:30,,,Стафф сцены / Ломо,волонтер,Хусаинов Руслан Ринатович,FALSE,
+,,,Стафф сцены / Кронва,волонтер,Садовой Григорий Владимирович,FALSE,
+,,,Клуб выпускников,волонтер,Слудная Виктория,FALSE,
+,,,Клуб выпускников,волонтер,Гетман Юлия Сергеевна,FALSE,
+,,,Вход VIP,волонтер,Биктагирова Зарина Рамилевна,FALSE,
+,,,Вход STAFF,волонтер,Золотов Артур Антонович,FALSE,
+,,,Вход гости,волонтер,Макарова Ева Викторовна,FALSE,
+,,,Прием документов,волонтер,,FALSE,
+,,,Прием документов,волонтер,,FALSE,
+,,,Прием документов,волонтер,,FALSE,
+,,,Поступалити,волонтер,Мануковская Дарья Михайловна,FALSE,
+,,,Поступалити,волонтер,Маслова Дарья Денисовна,FALSE,
+,,,Поступалити,волонтер,Лишик Александра Юрьевна,FALSE,
+,,,Спорт. Мастер-классы,волонтер,Коклюшкина Екатерина Александровна,FALSE,
+,,,Киберспорт,волонтер,Голландских Екатерина Викторовна,FALSE,
+,,,Сапы,волонтер,Родионова Мария Сергеевна,FALSE,
+,,,Сапы,волонтер,Бурмакина Полина Геннадьевна,FALSE,
+,,,ИТМО Многоборье,волонтер,Иванова Полина Алексеевна,FALSE,
+,,,ИТМО Многоборье,волонтер,Алексеева Арина Андреевна,FALSE,
+,,,ИТМО Lab,волонтер,Ананич Андрей Станиславович,FALSE,
+,,,ИТМО Lab,волонтер,Жилин Григорий Романович,FALSE,
+,,,ТехноАрт,волонтер,Щепова Анастасия Алексеевна,FALSE,
+,,,ТехноАрт,волонтер,Леонова Таисия Павловна,FALSE,
+,,,ТехноАрт,волонтер,Орлова Вера Сергеевна,FALSE,
+,,,Дети 0+,волонтер,Суворова Лилия Андреевна,FALSE,
+,,,Дети 0+,волонтер,Шамшурина Наталья Владимировна,FALSE,
+,,,ITMO STORE,волонтер,Клюшинцов Максим Дмитриевич,FALSE,
+,,,ITMO STORE,волонтер,Яцышина Анастасия Артемовна,FALSE,
+,,,Дети 7+,волонтер,Богданова Софья Игоревна,FALSE,
+,,,Дети 7+,волонтер,Скалазубова Валерия Сергеевна,FALSE,
+,,,Дети 7+,волонтер,Курбанов Рустам Ринатович,FALSE,
+,,,Дети 7+,волонтер,Решетникова Елена Александровна ,FALSE,
+,,,Дети 7+,волонтер,Агафонова Алёна Алексеевна,FALSE,
+,,,Резерв,волонтер,Трофимов Михаил Алексеевич,FALSE,
+,,,Резерв,волонтер,Ботова Варвара Андреевна,FALSE,
+,,,Резерв,волонтер,Хоруженко Анастасия Юрьевна,FALSE,
+,,,Резерв,волонтер,Дмитриев Владислав Павлович,FALSE,
+,,,Резерв,волонтер,Вишнева Амалия Юрьевна,FALSE,
+,,,Резерв,волонтер,Будникова Виктория Евгеньевна,FALSE,
+,,,Резерв,волонтер,Ринчинова Номина Мункоевна,FALSE,
+,,,Резерв,волонтер,Каримова Назира Камилевна,FALSE,
+,,,,координатор,Баженов Георгий Ваганович,FALSE,
+,,,,координатор,Стафеев Иван Алексеевич,FALSE,
+14:30 - 15:00,,,Сцена Ломо,волонтер,Никонорова Варвара Алексеевна,FALSE,
+,,,Сцена Кронва,волонтер,Климов Даниил Андреевич,FALSE,
+,,,Сцена Кронва,волонтер,Столярова Виктория Романовна,FALSE,
+,,,Прием документов,волонтер,,FALSE,
+,,,Прием документов,волонтер,,FALSE,
+,,,Прием документов,волонтер,,FALSE,
+,,,Приемка и консультации,волонтер,Бабайлова Алина Александровна,FALSE,
+,,,Приемка и консультации,волонтер,Горшкова София Александровна,FALSE,
+,,,Приемка и консультации,волонтер,Малышев Родион Александрович,FALSE,
+,,,Приемка и консультации,волонтер,Нираула Шубхам,FALSE,
+,,,Настолки и ПиД,волонтер,Безгина Анна Андреевна ,FALSE,
+,,,Костровая,волонтер,Телегина Александра Михайловна,FALSE,
+,,,ИТМО Многоборье,волонтер,Воронина София Артемовна,FALSE,
+,,,ИТМО Многоборье,волонтер,Жукова Юлия Сергеевна,FALSE,
+,,,ТехноАрт,волонтер,Кныш Наталья Владимировна,FALSE,
+,,,ТехноАрт,волонтер,Кузьмичкина Юлия Андреевна,FALSE,
+,,,ТехноАрт,волонтер,Савицкая Алина Александровна,FALSE,
+,,,ТехноАрт,волонтер,Миронова Софья Алексеевна,FALSE,
+,,,Клацаем смысла или вайб-кодинг,волонтер,Пищелина Дарья Андреевна,FALSE,
+,,,Дети 0+,волонтер,Решетникова Елена Александровна,FALSE,
+,,,Дети 0+,волонтер,Голубицкая Светлана Владимировна,FALSE,
+,,,Дети 0+,волонтер,Мордвинцева Дарья Александровна,FALSE,
+,,,Лекторий + орг помощь,волонтер,Загребельная Елизавета Юрьевна,FALSE,
+,,,ДНК ИТМО,волонтер,Барбаш Олеся Сергеевна ,FALSE,
+,,,Наука и аспиранты,волонтер,Лукашов Владислав Эдуардович,FALSE,
+,,,Дети 7+,волонтер,Альперович Мария Кирилловна,FALSE,
+,,,Дети 7+,волонтер,Богданова Анна Павловна,FALSE,
+,,,Дети 7+,волонтер,Румянцев Григорий Андреевич,FALSE,
+,,,Дети 7+,волонтер,Кудряшова Варвара Константиновна,FALSE,
+,,,Дети 7+,волонтер,Акулинина Светлана Борисовна,FALSE,
+,,,Зона питания,волонтер,Смоленцева Ирина Георгиевна,FALSE,
+,,,"Зона питания
+",волонтер,Леванова Елена Александровна,FALSE,
+,,,Резерв,волонтер,Правдина Нина Борисовна,FALSE,
+,,,Резерв,волонтер,Слета Варвара Евгеньевна,FALSE,
+,,,Резерв,волонтер,Тосина Маргарита Анатольевна,FALSE,
+,,,Резерв,волонтер,Мацкова Мария Борисовна,FALSE,
+,,,Резерв,волонтер,Кубаева Радмила Раймировна,FALSE,
+,,,Резерв,волонтер,Терзинов Максим,FALSE,
+,,,Резерв,волонтер,Смирнова Екатерина Яновна,FALSE,
+,,,Резерв,волонтер,Стрелина Мария Алексеевна,FALSE,
+,,,,координатор,Бердичевский Артем Сергеевич,FALSE,`;
+
+    // ----- парсим -----
+    function parseCSV(text) {
+      const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+      const header = lines[0].split(',').map(c => c.trim());
+      const data = [];
+      let currentTime = '';
+      for (let i = 1; i < lines.length; i++) {
+        let parts = lines[i].split(',').map(c => c.trim());
+        // если первый столбец не пустой — обновляем время
+        if (parts[0] && parts[0] !== '') {
+          currentTime = parts[0];
+        }
+        // зона: parts[3], статус: parts[4], фио: parts[5], явка: parts[6], коммент: parts[7] 
+        const zone = parts[3] || '';
+        const status = parts[4] || '';
+        let name = parts[5] || '';
+        const attendance = parts[6] || 'FALSE';
+        const comment = parts[7] || '';
+        // если имя пустое, но есть комментарий "серебро" — оставляем пустым
+        data.push({
+          time: currentTime,
+          zone: zone,
+          status: status,
+          name: name,
+          attendance: attendance.toUpperCase() === 'TRUE',
+          comment: comment
+        });
+      }
+      return data;
+    }
+
+    let volunteerData = parseCSV(rawCSV);
+    // генерация уникальных id (по индексу)
+    volunteerData.forEach((item, idx) => item._id = idx);
+
+    // ---------- состояние ----------
+    let currentData = [...volunteerData];
+    let timeFilter = 'all';
+    let zoneFilter = 'all';
+
+    // DOM
+    const tbody = document.getElementById('tableBody');
+    const timeSelect = document.getElementById('timeFilter');
+    const zoneSelect = document.getElementById('zoneFilter');
+    const totalSpan = document.getElementById('totalCount');
+    const servedSpan = document.getElementById('servedCount');
+    const toastEl = document.getElementById('saveToast');
+
+    // уникальные времена и зоны
+    function populateFilters() {
+      const times = [...new Set(volunteerData.map(d => d.time).filter(t => t))];
+      const zones = [...new Set(volunteerData.map(d => d.zone).filter(z => z))];
+      timeSelect.innerHTML = '<option value="all">Все слоты</option>' + times.map(t => `<option value="${t}">${t}</option>`).join('');
+      zoneSelect.innerHTML = '<option value="all">Все зоны</option>' + zones.sort().map(z => `<option value="${z}">${z}</option>`).join('');
+    }
+
+    function render() {
+      const filtered = currentData.filter(row => {
+        if (timeFilter !== 'all' && row.time !== timeFilter) return false;
+        if (zoneFilter !== 'all' && row.zone !== zoneFilter) return false;
+        return true;
+      });
+
+      totalSpan.textContent = filtered.length;
+      const served = filtered.filter(r => r.attendance).length;
+      servedSpan.textContent = served;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:32px; color:#6b7f94;">Нет данных по выбранным фильтрам</td></tr>`;
+        return;
+      }
+
+      let html = '';
+      for (let row of filtered) {
+        const nameDisplay = row.name ? row.name : '—';
+        const statusClass = row.status === 'координатор' ? 'coordinator' : 'volunteer';
+        html += `<tr>
+          <td><span style="font-weight:450; font-size:0.8rem;">${row.time || '—'}</span></td>
+          <td><span class="zone-badge">${row.zone || '—'}</span></td>
+          <td><span class="vol-name ${row.name ? '' : 'empty'}">${nameDisplay}</span></td>
+          <td><span class="status-badge ${statusClass}">${row.status || '—'}</span></td>
+          <td class="checkbox-cell">
+            <input type="checkbox" data-id="${row._id}" ${row.attendance ? 'checked' : ''}>
+          </td>
+          <td><input class="comment-field" type="text" data-id="${row._id}" value="${row.comment || ''}" placeholder="комментарий"></td>
+        </tr>`;
+      }
+      tbody.innerHTML = html;
+
+      // привязываем обработчики
+      document.querySelectorAll('.checkbox-cell input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', function(e) {
+          const id = parseInt(this.dataset.id);
+          const row = currentData.find(d => d._id === id);
+          if (row) {
+            row.attendance = this.checked;
+            updateStats();
+            saveToLocalStorage();
+            showToast('Отметка обновлена');
+          }
+        });
+      });
+
+      document.querySelectorAll('.comment-field').forEach(inp => {
+        inp.addEventListener('change', function(e) {
+          const id = parseInt(this.dataset.id);
+          const row = currentData.find(d => d._id === id);
+          if (row) {
+            row.comment = this.value;
+            saveToLocalStorage();
+            showToast('Комментарий сохранён');
+          }
+        });
+      });
+    }
+
+    function updateStats() {
+      const filtered = currentData.filter(row => {
+        if (timeFilter !== 'all' && row.time !== timeFilter) return false;
+        if (zoneFilter !== 'all' && row.zone !== zoneFilter) return false;
+        return true;
+      });
+      totalSpan.textContent = filtered.length;
+      servedSpan.textContent = filtered.filter(r => r.attendance).length;
+    }
+
+    // local storage
+    function saveToLocalStorage() {
+      try {
+        const store = currentData.map(({ _id, time, zone, status, name, attendance, comment }) => ({
+          _id, time, zone, status, name, attendance, comment
+        }));
+        localStorage.setItem('ifd_lunch_data', JSON.stringify(store));
+      } catch (e) {}
+    }
+
+    function loadFromLocalStorage() {
+      try {
+        const stored = localStorage.getItem('ifd_lunch_data');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // merge по _id
+            const idMap = new Map();
+            currentData.forEach(d => idMap.set(d._id, d));
+            parsed.forEach(p => {
+              if (idMap.has(p._id)) {
+                const target = idMap.get(p._id);
+                target.attendance = p.attendance;
+                target.comment = p.comment || '';
+              }
+            });
+          }
+        }
+      } catch (e) {}
+    }
+
+    function showToast(msg) {
+      toastEl.textContent = msg || '✅ Сохранено';
+      toastEl.classList.add('show');
+      clearTimeout(window.toastTimer);
+      window.toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
+    }
+
+    // сброс отметок
+    function resetAll() {
+      if (!confirm('Сбросить все отметки о выдаче обеда?')) return;
+      currentData.forEach(d => { d.attendance = false; });
+      render();
+      saveToLocalStorage();
+      showToast('Отметки сброшены');
+    }
+
+    // экспорт CSV
+    function exportCSV() {
+      const header = ['ВРЕМЯ ОБЕДА','Зона','Статус','ФИО','Явка','Комментарий'];
+      const rows = currentData.map(d => [
+        d.time || '',
+        d.zone || '',
+        d.status || '',
+        d.name || '',
+        d.attendance ? 'TRUE' : 'FALSE',
+        d.comment || ''
+      ]);
+      const csvContent = [header.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'IFD26_pitanie.csv';
+      link.click();
+      showToast('CSV скачан');
+    }
+
+    // фильтры
+    timeSelect.addEventListener('change', function() {
+      timeFilter = this.value;
+      render();
+    });
+    zoneSelect.addEventListener('change', function() {
+      zoneFilter = this.value;
+      render();
+    });
+
+    document.getElementById('resetAllBtn').addEventListener('click', resetAll);
+    document.getElementById('exportCSVBtn').addEventListener('click', exportCSV);
+
+    // инициализация
+    populateFilters();
+    loadFromLocalStorage();
+    render();
+
+    // автосохранение при изменении
+    window.addEventListener('beforeunload', function() {
+      saveToLocalStorage();
+    });
+
+  })();
+</script>
+</body>
+</html>
