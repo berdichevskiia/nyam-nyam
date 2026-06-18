@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5">
   <title>Питание волонтёров · IFD’26</title>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
     * {
       margin: 0;
@@ -36,7 +39,6 @@
       transition: all 0.2s;
     }
 
-    /* заголовок */
     .header-row {
       display: flex;
       flex-wrap: wrap;
@@ -78,6 +80,35 @@
       backdrop-filter: blur(4px);
     }
 
+    .sync-status {
+      font-size: 0.75rem;
+      color: #7bc9ff;
+      background: rgba(0, 60, 120, 0.4);
+      padding: 4px 16px;
+      border-radius: 60px;
+      border: 1px solid #2a6a9a;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sync-status .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4caf50;
+      animation: pulse 1.5s infinite;
+    }
+    .sync-status .dot.offline {
+      background: #ff9800;
+      animation: none;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
     .meta-note {
       font-size: 0.8rem;
       color: #99b8d6;
@@ -89,7 +120,6 @@
       white-space: nowrap;
     }
 
-    /* панель фильтров + поиск */
     .toolbar {
       display: flex;
       flex-wrap: wrap;
@@ -188,7 +218,6 @@
       color: #8bcbff;
     }
 
-    /* таблица */
     .table-wrap {
       border-radius: 28px;
       border: 1px solid #254十五;
@@ -383,7 +412,6 @@
       opacity: 1;
     }
 
-    /* адаптив */
     @media (max-width: 820px) {
       body {
         padding: 14px;
@@ -434,6 +462,10 @@
       .btn {
         padding: 8px 18px;
         font-size: 0.8rem;
+      }
+      .sync-status {
+        font-size: 0.65rem;
+        padding: 2px 12px;
       }
     }
 
@@ -487,8 +519,12 @@
     <div class="title-block">
       <h1>🍽️ Обеды волонтёров</h1>
       <span class="badge-ifd">IFD’26</span>
+      <span class="sync-status" id="syncStatus">
+        <span class="dot" id="syncDot"></span>
+        <span id="syncLabel">синхронизация</span>
+      </span>
     </div>
-    <div class="meta-note">✓ отмечайте · автосохранение</div>
+    <div class="meta-note">✓ отмечайте · синхронизация в реальном времени</div>
   </div>
 
   <div class="toolbar">
@@ -534,7 +570,57 @@
 
 <script>
   (function(){
-    // ----- данные (обновлены из IFD'26 - Питание_списки-2.csv) -----
+    // ====== НАСТРОЙКА FIREBASE ======
+    // Замените на свои данные из консоли Firebase
+    const firebaseConfig = {
+      apiKey: "BDda5J2RDKc_itxUJSThiiWjHy_yJdPNQnwPLumTzDAEyV3GwwlowW-_84ogHqPFWHU_P5ifD_fIqYnuFJ2z-pk",
+      authDomain: "nyamnya-e5ba7-default-rtdb.europe-west1.firebasedatabase.app",
+      databaseURL: "https://nyamnya-e5ba7-default-rtdb.europe-west1.firebasedatabase.app/",
+      projectId: "368173456106",
+      storageBucket: "nyamnya-e5ba7-default-rtdb.appspot.com",
+      messagingSenderId: "123456789",
+      appId: "1:123456789:web:abcdef123456"
+    };
+
+    // Инициализация Firebase
+    let database;
+    let isFirebaseReady = false;
+    let syncEnabled = false;
+
+    try {
+      firebase.initializeApp(firebaseConfig);
+      database = firebase.database();
+      // Проверяем подключение
+      const connectedRef = database.ref('.info/connected');
+      connectedRef.on('value', (snap) => {
+        const connected = snap.val();
+        syncEnabled = connected;
+        updateSyncStatus(connected);
+        if (connected) {
+          // При подключении загружаем данные
+          loadFromFirebase();
+        }
+      });
+      isFirebaseReady = true;
+    } catch (e) {
+      console.warn('Firebase не настроен, работаем в офлайн-режиме', e);
+      syncEnabled = false;
+      updateSyncStatus(false);
+    }
+
+    function updateSyncStatus(connected) {
+      const dot = document.getElementById('syncDot');
+      const label = document.getElementById('syncLabel');
+      if (connected) {
+        dot.className = 'dot';
+        label.textContent = 'синхронизация';
+      } else {
+        dot.className = 'dot offline';
+        label.textContent = 'офлайн';
+      }
+    }
+
+    // ====== ДАННЫЕ ======
     const rawCSV = `ВРЕМЯ ОБЕДА,,,Зона,Статус,ФИО,Явка,Комментарий
 13:00 - 13:30,,,Сцена Ломо,волонтер,Ковальчук Марина Евгеньевна,FALSE,
 ,,,Стафф сцены / Ломо,волонтер,Искандаров Тимур Азаматович,FALSE,
@@ -707,7 +793,6 @@
 ,,,Резерв,волонтер,Стрелина Мария Алексеевна,FALSE,
 ,,,,координатор,Бердичевский Артем Сергеевич,FALSE,`;
 
-    // ----- парсим -----
     function parseCSV(text) {
       const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
       if (lines.length === 0) return [];
@@ -742,6 +827,8 @@
     let timeFilter = 'all';
     let zoneFilter = 'all';
     let searchQuery = '';
+    let isSyncing = false;
+    let syncTimeout = null;
 
     const tbody = document.getElementById('tableBody');
     const timeSelect = document.getElementById('timeFilter');
@@ -802,7 +889,7 @@
           if (row) {
             row.attendance = this.checked;
             updateStats();
-            saveToLocalStorage();
+            syncToFirebase();
             showToast('Отметка обновлена');
           }
         });
@@ -814,7 +901,7 @@
           const row = currentData.find(d => d._id === id);
           if (row) {
             row.comment = this.value;
-            saveToLocalStorage();
+            syncToFirebase();
             showToast('Комментарий сохранён');
           }
         });
@@ -836,47 +923,61 @@
       servedSpan.textContent = filtered.filter(r => r.attendance).length;
     }
 
-    function saveToLocalStorage() {
-      try {
-        const store = currentData.map(({ _id, time, zone, status, name, attendance, comment }) => ({
-          _id, time, zone, status, name, attendance, comment
-        }));
-        localStorage.setItem('ifd_lunch_data', JSON.stringify(store));
-      } catch (e) {}
-    }
-
-    function loadFromLocalStorage() {
-      try {
-        const stored = localStorage.getItem('ifd_lunch_data');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const idMap = new Map();
-            currentData.forEach(d => idMap.set(d._id, d));
-            parsed.forEach(p => {
-              if (idMap.has(p._id)) {
-                const target = idMap.get(p._id);
-                target.attendance = p.attendance;
-                target.comment = p.comment || '';
-              }
-            });
-          }
+    // ====== FIREBASE СИНХРОНИЗАЦИЯ ======
+    function syncToFirebase() {
+      if (!syncEnabled || isSyncing) return;
+      
+      clearTimeout(syncTimeout);
+      syncTimeout = setTimeout(() => {
+        if (!syncEnabled) return;
+        isSyncing = true;
+        try {
+          // Сохраняем только attendance и comment для каждого волонтёра
+          const syncData = {};
+          currentData.forEach(row => {
+            syncData[row._id] = {
+              attendance: row.attendance,
+              comment: row.comment || ''
+            };
+          });
+          database.ref('ifd_lunch/volunteers').set(syncData);
+        } catch (e) {
+          console.warn('Ошибка синхронизации:', e);
+        } finally {
+          isSyncing = false;
         }
-      } catch (e) {}
+      }, 300);
     }
 
-    function showToast(msg) {
-      toastEl.textContent = msg || '✅ Сохранено';
-      toastEl.classList.add('show');
-      clearTimeout(window.toastTimer);
-      window.toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
+    function loadFromFirebase() {
+      if (!syncEnabled) return;
+      try {
+        database.ref('ifd_lunch/volunteers').on('value', (snapshot) => {
+          const data = snapshot.val();
+          if (!data) return;
+          
+          // Обновляем currentData
+          currentData.forEach(row => {
+            const id = row._id;
+            if (data[id]) {
+              row.attendance = data[id].attendance === true;
+              row.comment = data[id].comment || '';
+            }
+          });
+          
+          render();
+        });
+      } catch (e) {
+        console.warn('Ошибка загрузки из Firebase:', e);
+      }
     }
 
+    // ====== ОСТАЛЬНЫЕ ФУНКЦИИ ======
     function resetAll() {
       if (!confirm('Сбросить все отметки о выдаче обеда?')) return;
       currentData.forEach(d => { d.attendance = false; });
       render();
-      saveToLocalStorage();
+      syncToFirebase();
       showToast('Отметки сброшены');
     }
 
@@ -899,7 +1000,14 @@
       showToast('CSV скачан');
     }
 
-    // обработчики фильтров
+    function showToast(msg) {
+      toastEl.textContent = msg || '✅ Сохранено';
+      toastEl.classList.add('show');
+      clearTimeout(window.toastTimer);
+      window.toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
+    }
+
+    // Обработчики фильтров
     timeSelect.addEventListener('change', function() {
       timeFilter = this.value;
       render();
@@ -916,12 +1024,41 @@
     document.getElementById('resetAllBtn').addEventListener('click', resetAll);
     document.getElementById('exportCSVBtn').addEventListener('click', exportCSV);
 
+    // Инициализация
     populateFilters();
-    loadFromLocalStorage();
+    
+    // Если Firebase не настроен, используем localStorage как fallback
+    if (!isFirebaseReady) {
+      // fallback: загружаем из localStorage
+      try {
+        const stored = localStorage.getItem('ifd_lunch_data');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const idMap = new Map();
+            currentData.forEach(d => idMap.set(d._id, d));
+            parsed.forEach(p => {
+              if (idMap.has(p._id)) {
+                const target = idMap.get(p._id);
+                target.attendance = p.attendance;
+                target.comment = p.comment || '';
+              }
+            });
+          }
+        }
+      } catch (e) {}
+    }
+    
     render();
 
+    // Сохраняем в localStorage как резервную копию
     window.addEventListener('beforeunload', function() {
-      saveToLocalStorage();
+      try {
+        const store = currentData.map(({ _id, time, zone, status, name, attendance, comment }) => ({
+          _id, time, zone, status, name, attendance, comment
+        }));
+        localStorage.setItem('ifd_lunch_data', JSON.stringify(store));
+      } catch (e) {}
     });
 
   })();
