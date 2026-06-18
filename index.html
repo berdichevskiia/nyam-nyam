@@ -89,6 +89,7 @@
       gap: 6px;
       cursor: pointer;
       transition: 0.2s;
+      user-select: none;
     }
     .sync-status:hover {
       background: rgba(0, 80, 160, 0.5);
@@ -651,7 +652,7 @@
       <button class="btn btn-success" onclick="connectToRoom()">Подключиться</button>
     </div>
     <p style="font-size:0.75rem; color:#6f8aa8; margin-top:12px;">
-      💡 Данные сохраняются локально и в облаке. При отсутствии интернета работа продолжается в офлайн-режиме.
+      💡 Данные сохраняются локально и синхронизируются между устройствами в одной комнате.
     </p>
   </div>
 </div>
@@ -866,44 +867,52 @@
     let zoneFilter = 'all';
     let searchQuery = '';
     
-    // ====== СИНХРОНИЗАЦИЯ ЧЕРЕЗ LOCALSTORAGE + BROADCAST ======
+    // ====== СИНХРОНИЗАЦИЯ ЧЕРЕЗ BROADCAST CHANNEL ======
     let syncRoom = localStorage.getItem('ifd_sync_room') || '';
-    let syncEnabled = false;
     let syncChannel = null;
-    let isSyncing = false;
-
-    // Пытаемся восстановить комнату
-    if (syncRoom) {
-      connectToBroadcastChannel(syncRoom);
-    }
+    let syncEnabled = false;
+    let isOwnChange = false;
 
     function connectToBroadcastChannel(room) {
       try {
         if (syncChannel) {
           syncChannel.close();
+          syncChannel = null;
         }
+        
+        // Создаём новый канал
         syncChannel = new BroadcastChannel('ifd_sync_' + room);
         syncEnabled = true;
         syncRoom = room;
         localStorage.setItem('ifd_sync_room', room);
         
-        // Слушаем сообщения
+        // Слушаем сообщения от других вкладок/устройств
         syncChannel.onmessage = (event) => {
           if (event.data && event.data.type === 'update') {
             const data = event.data.payload;
             if (data && Array.isArray(data)) {
-              // Обновляем currentData из полученных данных
+              // Проверяем, что данные действительно изменились
+              let hasChanges = false;
               const idMap = new Map();
               currentData.forEach(d => idMap.set(d._id, d));
+              
               data.forEach(p => {
                 if (idMap.has(p._id)) {
                   const target = idMap.get(p._id);
-                  target.attendance = p.attendance;
-                  target.comment = p.comment || '';
+                  const newAttendance = p.attendance === true;
+                  const newComment = p.comment || '';
+                  if (target.attendance !== newAttendance || target.comment !== newComment) {
+                    target.attendance = newAttendance;
+                    target.comment = newComment;
+                    hasChanges = true;
+                  }
                 }
               });
-              render();
-              showToast('📡 Данные синхронизированы');
+              
+              if (hasChanges) {
+                render();
+                showToast('📡 Данные синхронизированы');
+              }
             }
           }
         };
@@ -911,14 +920,14 @@
         updateSyncStatus(true);
         showToast('🔗 Подключено к комнате: ' + room);
         
-        // Отправляем текущие данные новому участнику
+        // Отправляем свои данные новому участнику с небольшой задержкой
         setTimeout(() => {
           broadcastData();
-        }, 500);
+        }, 300);
         
         return true;
       } catch (e) {
-        console.warn('BroadcastChannel не поддерживается, используем localStorage', e);
+        console.warn('BroadcastChannel не поддерживается', e);
         syncEnabled = false;
         updateSyncStatus(false);
         return false;
@@ -928,13 +937,17 @@
     function broadcastData() {
       if (!syncEnabled || !syncChannel) return;
       try {
+        isOwnChange = true;
         const data = currentData.map(({ _id, attendance, comment }) => ({
-          _id, attendance, comment
+          _id, 
+          attendance: attendance === true,
+          comment: comment || ''
         }));
         syncChannel.postMessage({
           type: 'update',
           payload: data
         });
+        setTimeout(() => { isOwnChange = false; }, 100);
       } catch (e) {
         console.warn('Ошибка отправки данных:', e);
       }
@@ -970,8 +983,6 @@
       if (room) {
         connectToBroadcastChannel(room);
         closeSyncModal();
-        // Сохраняем в localStorage
-        localStorage.setItem('ifd_sync_room', room);
       } else {
         showToast('❌ Введите код комнаты');
       }
@@ -1035,6 +1046,7 @@
       }
       tbody.innerHTML = html;
 
+      // Привязываем обработчики к чекбоксам
       document.querySelectorAll('.checkbox-cell input[type="checkbox"]').forEach(cb => {
         cb.addEventListener('change', function() {
           const id = parseInt(this.dataset.id);
@@ -1048,6 +1060,7 @@
         });
       });
 
+      // Привязываем обработчики к полям комментариев
       document.querySelectorAll('.comment-field').forEach(inp => {
         inp.addEventListener('change', function() {
           const id = parseInt(this.dataset.id);
@@ -1057,6 +1070,18 @@
             saveAll();
             showToast('Комментарий сохранён');
           }
+        });
+        // Сохраняем при вводе с задержкой
+        inp.addEventListener('input', function() {
+          clearTimeout(this._saveTimer);
+          this._saveTimer = setTimeout(() => {
+            const id = parseInt(this.dataset.id);
+            const row = currentData.find(d => d._id === id);
+            if (row) {
+              row.comment = this.value;
+              saveAll();
+            }
+          }, 500);
         });
       });
     }
@@ -1087,17 +1112,7 @@
       } catch (e) {}
       
       // Отправляем через BroadcastChannel
-      if (syncEnabled && syncChannel) {
-        try {
-          const data = currentData.map(({ _id, attendance, comment }) => ({
-            _id, attendance, comment
-          }));
-          syncChannel.postMessage({
-            type: 'update',
-            payload: data
-          });
-        } catch (e) {}
-      }
+      broadcastData();
     }
 
     function loadFromStorage() {
@@ -1111,7 +1126,7 @@
             parsed.forEach(p => {
               if (idMap.has(p._id)) {
                 const target = idMap.get(p._id);
-                target.attendance = p.attendance;
+                target.attendance = p.attendance === true;
                 target.comment = p.comment || '';
               }
             });
@@ -1180,7 +1195,6 @@
     // Загружаем сохранённые данные
     const hasSaved = loadFromStorage();
     if (!hasSaved) {
-      // Если нет сохранённых данных, используем исходные
       currentData = [...volunteerData];
     }
     
@@ -1197,10 +1211,10 @@
       saveAll();
     });
 
-    // Автосохранение каждые 5 секунд
+    // Автосохранение каждые 3 секунды
     setInterval(() => {
       saveAll();
-    }, 5000);
+    }, 3000);
 
   })();
 </script>
